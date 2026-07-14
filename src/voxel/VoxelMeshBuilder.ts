@@ -28,7 +28,8 @@ export function buildVoxelMesh(
   scene: Scene,
   name: string,
   voxels: Voxel[],
-  parent: Mesh | null = null
+  parent: Mesh | null = null,
+  mobileOptimized = false
 ): Mesh {
   const positions: number[] = [];
   const normals: number[] = [];
@@ -86,7 +87,9 @@ export function buildVoxelMesh(
   vertexData.indices = indices;
   vertexData.applyToMesh(mesh);
 
-  mesh.convertToUnIndexedMesh();
+  if (!mobileOptimized) {
+    mesh.convertToUnIndexedMesh();
+  }
   mesh.createNormals(true);
   mesh.useVertexColors = true;
   mesh.parent = parent;

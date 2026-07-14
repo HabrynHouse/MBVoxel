@@ -53,19 +53,26 @@ export function createGround(scene: Scene): void {
   }
 }
 
-export function setupLighting(scene: Scene): ShadowGenerator {
+export function setupLighting(scene: Scene, enableShadows = true): ShadowGenerator | null {
   const hemi = new HemisphericLight('hemi', new Vector3(0, 1, 0.2), scene);
   hemi.intensity = 0.55;
   hemi.groundColor = new Color3(0.15, 0.2, 0.12);
   hemi.diffuse = new Color3(0.85, 0.82, 0.75);
 
   const sun = new DirectionalLight('sun', new Vector3(-0.8, -1.5, 0.6), scene);
-  sun.intensity = 1.1;
+  sun.intensity = enableShadows ? 1.1 : 0.85;
   sun.diffuse = new Color3(1, 0.95, 0.85);
 
-  const shadowGen = new ShadowGenerator(2048, sun);
+  if (!enableShadows) {
+    scene.fogMode = Scene.FOGMODE_EXP2;
+    scene.fogDensity = 0.006;
+    scene.fogColor = new Color3(0.65, 0.72, 0.82);
+    return null;
+  }
+
+  const shadowGen = new ShadowGenerator(1024, sun);
   shadowGen.useBlurExponentialShadowMap = true;
-  shadowGen.blurKernel = 32;
+  shadowGen.blurKernel = 16;
   shadowGen.darkness = 0.35;
 
   scene.fogMode = Scene.FOGMODE_EXP2;

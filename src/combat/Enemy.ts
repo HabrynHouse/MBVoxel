@@ -33,7 +33,8 @@ export class Enemy {
     scene: Scene,
     position: Vector3,
     isVoxel: boolean,
-    isElite = false
+    isElite = false,
+    mobileOptimized = false
   ) {
     this.id = enemyIdCounter++;
     this.isElite = isElite;
@@ -45,7 +46,7 @@ export class Enemy {
 
     const name = `enemy_${this.id}`;
     const built = isVoxel
-      ? buildVoxelEnemy(scene, name, isElite)
+      ? buildVoxelEnemy(scene, name, isElite, mobileOptimized)
       : buildPolygonEnemy(scene, name, isElite);
 
     this.root = built.root;
@@ -129,10 +130,12 @@ export class EnemyManager {
   private scene: Scene;
   private enemies: Enemy[] = [];
   private isVoxelMode: boolean;
+  private mobileOptimized: boolean;
 
-  constructor(scene: Scene, isVoxelMode: boolean) {
+  constructor(scene: Scene, isVoxelMode: boolean, mobileOptimized = false) {
     this.scene = scene;
     this.isVoxelMode = isVoxelMode;
+    this.mobileOptimized = mobileOptimized;
   }
 
   setVoxelMode(isVoxel: boolean): void {
@@ -149,7 +152,7 @@ export class EnemyManager {
       );
 
     const elite = isElite ?? Math.random() < 0.15;
-    const enemy = new Enemy(this.scene, pos, this.isVoxelMode, elite);
+    const enemy = new Enemy(this.scene, pos, this.isVoxelMode, elite, this.mobileOptimized);
     this.enemies.push(enemy);
     return enemy;
   }

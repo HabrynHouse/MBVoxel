@@ -43,15 +43,21 @@ export class VoxelCharacter {
   private shieldMesh: Mesh | null = null;
   private equippedArmor: Set<ArmorSlot> = new Set();
   private currentWeapon: WeaponType = 'sword';
+  private mobileOptimized: boolean;
 
-  constructor(scene: Scene, name: string) {
+  constructor(scene: Scene, name: string, mobileOptimized = false) {
     this.scene = scene;
+    this.mobileOptimized = mobileOptimized;
     this.root = new TransformNode(`${name}_root`, scene);
     this.rig = new CharacterRig(scene, `${name}_rig`, this.root);
 
     this.buildBody();
     this.buildArmor();
     this.equipWeapon('sword');
+  }
+
+  private createMesh(name: string, voxels: import('../shared/types').Voxel[]): Mesh {
+    return buildVoxelMesh(this.scene, name, voxels, null, this.mobileOptimized);
   }
 
   private buildBody(): void {
@@ -72,7 +78,7 @@ export class VoxelCharacter {
 
     for (const [meshName, partKey] of Object.entries(partMap)) {
       const voxels = parts[partKey];
-      const mesh = buildVoxelMesh(this.scene, meshName, voxels);
+      const mesh = this.createMesh(meshName, voxels);
       mesh.material = mat;
       this.bodyMeshes.set(meshName, mesh);
     }
@@ -124,7 +130,7 @@ export class VoxelCharacter {
     };
 
     for (const slot of ALL_ARMOR_SLOTS) {
-      const mesh = buildVoxelMesh(this.scene, `armor_${slot}`, builders[slot]());
+      const mesh = this.createMesh(`armor_${slot}`, builders[slot]());
       mesh.material = mat;
       mesh.setEnabled(false);
       this.armorMeshes.set(slot, mesh);
@@ -169,7 +175,7 @@ export class VoxelCharacter {
     mat.roughness = 0.3;
 
     if (type === 'shield') {
-      this.shieldMesh = buildVoxelMesh(this.scene, 'shield', buildShieldVoxels());
+      this.shieldMesh = this.createMesh('shield', buildShieldVoxels());
       this.shieldMesh.material = mat;
       this.rig.attachShield(this.shieldMesh);
       return;
@@ -185,7 +191,7 @@ export class VoxelCharacter {
     const builder = builders[type];
     if (!builder) return;
 
-    this.weaponMesh = buildVoxelMesh(this.scene, `weapon_${type}`, builder());
+    this.weaponMesh = this.createMesh(`weapon_${type}`, builder());
     this.weaponMesh.material = mat;
     this.rig.attachWeapon(this.weaponMesh, type);
   }
@@ -375,7 +381,12 @@ export class CharacterRig {
   }
 }
 
-export function buildVoxelEnemy(scene: Scene, name: string, isElite: boolean): {
+export function buildVoxelEnemy(
+  scene: Scene,
+  name: string,
+  isElite: boolean,
+  mobileOptimized = false
+): {
   mesh: Mesh;
   root: TransformNode;
 } {
@@ -385,7 +396,7 @@ export function buildVoxelEnemy(scene: Scene, name: string, isElite: boolean): {
   mat.roughness = 0.7;
 
   const root = new TransformNode(`${name}_root`, scene);
-  const mesh = buildVoxelMesh(scene, name, voxels);
+  const mesh = buildVoxelMesh(scene, name, voxels, null, mobileOptimized);
   mesh.material = mat;
   mesh.parent = root;
 

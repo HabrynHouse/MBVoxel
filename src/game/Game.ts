@@ -16,6 +16,7 @@ import { ALL_ARMOR_SLOTS, ArmorSlot, WeaponType } from '../shared/types';
 import { InputManager, UIManager } from '../ui/UIManager';
 import { VoxelCharacter } from '../voxel/VoxelCharacter';
 import { createGround, createSkybox, setupLighting } from '../world/Environment';
+import { isMobileDevice } from '../shared/platform';
 
 const WEAPON_DAMAGE: Record<WeaponType, number> = {
   sword: 25,
@@ -30,7 +31,7 @@ export class Game {
   private engine: Engine;
   private scene: Scene;
   private camera: ArcRotateCamera;
-  private shadowGen: ShadowGenerator;
+  private shadowGen: ShadowGenerator | null;
 
   private voxelCharacter: VoxelCharacter;
   private polygonCharacter: PolygonCharacter;
@@ -45,12 +46,21 @@ export class Game {
   private attackHitRegistered = false;
   private armorState: Map<ArmorSlot, boolean> = new Map();
   private weaponState: WeaponType = 'sword';
+  private isMobile: boolean;
 
   constructor(canvas: HTMLCanvasElement) {
-    this.engine = new Engine(canvas, true, {
-      preserveDrawingBuffer: true,
-      stencil: true,
+    this.isMobile = isMobileDevice();
+
+    this.engine = new Engine(canvas, !this.isMobile, {
+      preserveDrawingBuffer: false,
+      stencil: false,
+      antialias: !this.isMobile,
+      powerPreference: 'high-performance',
     });
+
+    if (this.isMobile) {
+      this.engine.setHardwareScalingLevel(1.5);
+    }
 
     this.scene = new Scene(this.engine);
     this.scene.clearColor = new Color4(0.55, 0.68, 0.88, 1);
@@ -67,12 +77,14 @@ export class Game {
     this.camera.lowerRadiusLimit = 5;
     this.camera.upperRadiusLimit = 25;
     this.camera.wheelPrecision = 20;
+    this.camera.pinchPrecision = 20;
+    this.camera.panningSensibility = 0;
 
     createSkybox(this.scene);
     createGround(this.scene);
-    this.shadowGen = setupLighting(this.scene);
+    this.shadowGen = setupLighting(this.scene, !this.isMobile);
 
-    this.voxelCharacter = new VoxelCharacter(this.scene, 'voxel');
+    this.voxelCharacter = new VoxelCharacter(this.scene, 'voxel', this.isMobile);
     this.polygonCharacter = new PolygonCharacter(this.scene, 'polygon');
     this.polygonCharacter.root.setEnabled(false);
 
@@ -82,7 +94,7 @@ export class Game {
       new AnimationController(this.voxelCharacter.rig)
     );
 
-    this.enemyManager = new EnemyManager(this.scene, true);
+    this.enemyManager = new EnemyManager(this.scene, true, this.isMobile);
     this.input = new InputManager();
     this.ui = new UIManager({
       onCharacterSwitch: (isVoxel) => this.switchCharacter(isVoxel),
@@ -104,11 +116,16 @@ export class Game {
     });
 
     window.addEventListener('resize', () => {
-      this.engine.resize();
+      this.resize();
     });
   }
 
+  resize(): void {
+    this.engine.resize();
+  }
+
   private addShadows(meshes: AbstractMesh[]): void {
+    if (!this.shadowGen) return;
     for (const mesh of meshes) {
       this.shadowGen.addShadowCaster(mesh);
     }
