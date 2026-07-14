@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <title>Mount & Blade Voxel — Character Comparison</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Source+Sans+3:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        height: 100dvh;
+        overflow: hidden;
+        font-family: 'Source Sans 3', sans-serif;
+        background: #0a0a0f;
+        color: #e8dcc8;
+        touch-action: manipulation;
+      }
+
+      #game-root {
+        position: fixed;
+        inset: 0;
+        overflow: hidden;
+      }
+
+      #renderCanvas {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        touch-action: none;
+        display: block;
+        z-index: 0;
+      }
+
+      #loading-overlay,
+      #error-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(10, 10, 15, 0.92);
+        padding: 24px;
+        text-align: center;
+      }
+
+      #error-overlay {
+        display: none;
+      }
+
+      #loading-overlay p,
+      #error-overlay p {
+        max-width: 320px;
+        line-height: 1.5;
+        opacity: 0.85;
+      }
+
+      #ui-overlay {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 10;
+      }
+
+      #ui-overlay > * {
+        pointer-events: auto;
+      }
+
+      .panel {
+        background: linear-gradient(
+          135deg,
+          rgba(20, 16, 12, 0.92) 0%,
+          rgba(35, 28, 20, 0.88) 100%
+        );
+        border: 1px solid rgba(180, 140, 80, 0.35);
+        border-radius: 8px;
+        backdrop-filter: blur(12px);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5),
+          inset 0 1px 0 rgba(255, 220, 160, 0.08);
+      }
+
+      /* Desktop layout */
+      #title-bar {
+        position: absolute;
+        top: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 10px 28px;
+        text-align: center;
+      }
+
+      #title-bar h1 {
+        font-family: 'Cinzel', serif;
+        font-size: 1.25rem;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        color: #d4af6a;
+        text-transform: uppercase;
+      }
+
+      #title-bar p {
+        font-size: 0.75rem;
+        opacity: 0.65;
+        margin-top: 2px;
+      }
+
+      #left-panel {
+        position: absolute;
+        top: 80px;
+        left: 16px;
+        width: 240px;
+        padding: 16px;
+      }
+
+      #right-panel {
+        position: absolute;
+        top: 80px;
+        right: 16px;
+        width: 240px;
+        padding: 16px;
+      }
+
+      #bottom-panel {
+        position: absolute;
+        bottom: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 12px 24px;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+
+      #controls-hint {
+        position: absolute;
+        bottom: 16px;
+        right: 16px;
+        padding: 10px 14px;
+        font-size: 0.7rem;
+        opacity: 0.7;
+        line-height: 1.6;
+        max-width: 220px;
+      }
+
+      /* Mobile top bar */
+      #mobile-topbar {
+        display: none;
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        padding: max(10px, env(safe-area-inset-top)) 12px 10px;
+        align-items: center;
+        gap: 10px;
+        background: linear-gradient(
+          180deg,
+          rgba(10, 8, 6, 0.85) 0%,
+          rgba(10, 8, 6, 0) 100%
+        );
+      }
+
+      #menu-toggle {
+        width: 42px;
+        height: 42px;
+        border-radius: 8px;
+        border: 1px solid rgba(180, 140, 80, 0.35);
+        background: rgba(40, 32, 24, 0.85);
+        color: #d4af6a;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+      }
+
+      #mobile-title {
+        flex: 1;
+        font-family: 'Cinzel', serif;
+        font-size: 0.85rem;
+        letter-spacing: 0.08em;
+        color: #d4af6a;
+        text-transform: uppercase;
+      }
+
+      #mobile-health {
+        font-size: 0.72rem;
+        opacity: 0.85;
+        white-space: nowrap;
+      }
+
+      /* Mobile slide-up menu */
+      #menu-backdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.45);
+        z-index: 20;
+      }
+
+      #mobile-menu {
+        display: none;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        max-height: 72dvh;
+        overflow-y: auto;
+        z-index: 30;
+        padding: 16px 16px max(16px, env(safe-area-inset-bottom));
+        border-radius: 16px 16px 0 0;
+        transform: translateY(100%);
+        transition: transform 0.25s ease;
+      }
+
+      body.menu-open #menu-backdrop {
+        display: block;
+      }
+
+      body.menu-open #mobile-menu {
+        transform: translateY(0);
+      }
+
+      .menu-section {
+        margin-bottom: 16px;
+      }
+
+      .menu-section:last-child {
+        margin-bottom: 0;
+      }
+
+      /* Touch controls */
+      #touch-controls {
+        display: none;
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 5;
+      }
+
+      #joystick-zone {
+        position: absolute;
+        left: max(16px, env(safe-area-inset-left));
+        bottom: max(20px, env(safe-area-inset-bottom));
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: rgba(20, 16, 12, 0.35);
+        border: 1px solid rgba(180, 140, 80, 0.25);
+        pointer-events: auto;
+        touch-action: none;
+      }
+
+      #joystick-knob {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(180, 140, 80, 0.55);
+        border: 1px solid rgba(255, 220, 160, 0.35);
+        pointer-events: none;
+      }
+
+      #touch-actions {
+        position: absolute;
+        right: max(16px, env(safe-area-inset-right));
+        bottom: max(20px, env(safe-area-inset-bottom));
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        pointer-events: auto;
+      }
+
+      #touch-attack,
+      #touch-run {
+        width: 68px;
+        height: 68px;
+        border-radius: 50%;
+        border: 1px solid rgba(180, 140, 80, 0.35);
+        background: rgba(40, 32, 24, 0.85);
+        color: #e8dcc8;
+        font-size: 0.72rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+
+      #touch-attack {
+        width: 80px;
+        height: 80px;
+        background: rgba(120, 40, 30, 0.85);
+        border-color: rgba(200, 80, 60, 0.45);
+        font-size: 0.8rem;
+      }
+
+      #touch-attack.pressed {
+        background: rgba(160, 50, 35, 0.95);
+        transform: scale(0.95);
+      }
+
+      #touch-run.active {
+        background: rgba(60, 90, 50, 0.85);
+        border-color: rgba(120, 180, 90, 0.5);
+      }
+
+      .panel-title {
+        font-family: 'Cinzel', serif;
+        font-size: 0.85rem;
+        color: #c9a050;
+        margin-bottom: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        border-bottom: 1px solid rgba(180, 140, 80, 0.2);
+        padding-bottom: 6px;
+      }
+
+      .btn-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .btn-row {
+        display: flex;
+        gap: 6px;
+      }
+
+      .btn-grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+      }
+
+      button {
+        font-family: 'Source Sans 3', sans-serif;
+        font-size: 0.78rem;
+        padding: 10px 12px;
+        border: 1px solid rgba(180, 140, 80, 0.3);
+        border-radius: 4px;
+        background: rgba(40, 32, 24, 0.8);
+        color: #e8dcc8;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        flex: 1;
+      }
+
+      button:active {
+        transform: scale(0.97);
+      }
+
+      button.active {
+        background: rgba(120, 90, 45, 0.7);
+        border-color: #c9a050;
+        color: #fff;
+      }
+
+      button.equipped {
+        background: rgba(60, 90, 50, 0.7);
+        border-color: rgba(120, 180, 90, 0.5);
+      }
+
+      .stat-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.75rem;
+        padding: 4px 0;
+        opacity: 0.85;
+      }
+
+      .stat-label {
+        opacity: 0.6;
+      }
+
+      #health-bar {
+        width: 100%;
+        height: 8px;
+        background: rgba(0, 0, 0, 0.4);
+        border-radius: 4px;
+        margin-top: 8px;
+        overflow: hidden;
+      }
+
+      #health-fill {
+        height: 100%;
+        width: 100%;
+        background: linear-gradient(90deg, #8b2020, #c04040);
+        border-radius: 4px;
+        transition: width 0.3s ease;
+      }
+
+      kbd {
+        display: inline-block;
+        padding: 1px 5px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 3px;
+        font-size: 0.65rem;
+        font-family: monospace;
+      }
+
+      /* Mobile overrides */
+      body.is-mobile #title-bar,
+      body.is-mobile #left-panel,
+      body.is-mobile #right-panel,
+      body.is-mobile #bottom-panel,
+      body.is-mobile #controls-hint {
+        display: none;
+      }
+
+      body.is-mobile #mobile-topbar,
+      body.is-mobile #mobile-menu,
+      body.is-mobile #touch-controls {
+        display: flex;
+      }
+
+      body.is-mobile #mobile-menu {
+        display: block;
+      }
+
+      body.is-mobile #touch-controls {
+        display: block;
+      }
+
+      @media (max-width: 768px) {
+        #title-bar,
+        #left-panel,
+        #right-panel,
+        #bottom-panel,
+        #controls-hint {
+          display: none;
+        }
+
+        #mobile-topbar,
+        #mobile-menu,
+        #touch-controls {
+          display: flex;
+        }
+
+        #mobile-menu {
+          display: block;
+        }
+
+        #touch-controls {
+          display: block;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game-root">
+      <canvas id="renderCanvas"></canvas>
+
+      <div id="loading-overlay">
+        <div>
+          <p style="font-family: Cinzel, serif; color: #d4af6a; margin-bottom: 8px">
+            Loading world...
+          </p>
+          <p>Building characters and terrain</p>
+        </div>
+      </div>
+
+      <div id="error-overlay">
+        <div>
+          <p style="font-family: Cinzel, serif; color: #c04040; margin-bottom: 8px">
+            Unable to start
+          </p>
+          <p id="error-message"></p>
+        </div>
+      </div>
+
+      <div id="ui-overlay">
+        <!-- Desktop panels -->
+        <div id="title-bar" class="panel">
+          <h1>Medieval Adventurer</h1>
+          <p>Voxel vs Polygon Character Comparison</p>
+        </div>
+
+        <div id="left-panel" class="panel">
+          <div class="panel-title">Character Type</div>
+          <div class="btn-group">
+            <div class="btn-row">
+              <button id="btn-voxel" class="active">Voxel</button>
+              <button id="btn-polygon">Polygon</button>
+            </div>
+          </div>
+
+          <div class="panel-title" style="margin-top: 16px">Armor</div>
+          <div class="btn-group" id="armor-buttons">
+            <button data-slot="helmet" id="armor-helmet">Helmet</button>
+            <button data-slot="chest" id="armor-chest">Chest Plate</button>
+            <button data-slot="pauldrons" id="armor-pauldrons">Pauldrons</button>
+            <button data-slot="gauntlets" id="armor-gauntlets">Gauntlets</button>
+            <button data-slot="greaves" id="armor-greaves">Greaves</button>
+            <button data-slot="boots" id="armor-boots">Boots</button>
+          </div>
+        </div>
+
+        <div id="right-panel" class="panel">
+          <div class="panel-title">Weapons</div>
+          <div class="btn-group" id="weapon-buttons">
+            <button data-weapon="sword" id="weapon-sword" class="equipped">Sword</button>
+            <button data-weapon="axe" id="weapon-axe">Battle Axe</button>
+            <button data-weapon="mace" id="weapon-mace">Mace</button>
+            <button data-weapon="bow" id="weapon-bow">Longbow</button>
+            <button data-weapon="shield" id="weapon-shield">Shield</button>
+            <button data-weapon="none" id="weapon-none">Unequip</button>
+          </div>
+
+          <div class="panel-title" style="margin-top: 16px">Status</div>
+          <div class="stat-row">
+            <span class="stat-label">Health</span>
+            <span id="health-text">100 / 100</span>
+          </div>
+          <div id="health-bar"><div id="health-fill"></div></div>
+          <div class="stat-row" style="margin-top: 8px">
+            <span class="stat-label">Enemies Slain</span>
+            <span id="kill-count">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Active Enemies</span>
+            <span id="enemy-count">0</span>
+          </div>
+        </div>
+
+        <div id="bottom-panel" class="panel">
+          <button id="btn-spawn">Spawn Enemy</button>
+          <button id="btn-heal">Rest (+30 HP)</button>
+        </div>
+
+        <div id="controls-hint" class="panel">
+          <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Move<br />
+          <kbd>Shift</kbd> Run &nbsp; <kbd>Space</kbd> Attack<br />
+          <kbd>Mouse</kbd> Orbit camera<br />
+          Click armor/weapons to toggle
+        </div>
+
+        <!-- Mobile UI -->
+        <div id="mobile-topbar">
+          <button id="menu-toggle" aria-expanded="false" aria-label="Open menu">☰</button>
+          <div id="mobile-title">Medieval Adventurer</div>
+          <div id="mobile-health">HP <span id="mobile-health-text">100 / 100</span></div>
+        </div>
+
+        <div id="menu-backdrop"></div>
+
+        <div id="mobile-menu" class="panel">
+          <div class="menu-section">
+            <div class="panel-title">Character Type</div>
+            <div class="btn-row">
+              <button onclick="document.getElementById('btn-voxel').click()">Voxel</button>
+              <button onclick="document.getElementById('btn-polygon').click()">Polygon</button>
+            </div>
+          </div>
+
+          <div class="menu-section">
+            <div class="panel-title">Armor</div>
+            <div class="btn-grid-2">
+              <button onclick="document.getElementById('armor-helmet').click()">Helmet</button>
+              <button onclick="document.getElementById('armor-chest').click()">Chest</button>
+              <button onclick="document.getElementById('armor-pauldrons').click()">Pauldrons</button>
+              <button onclick="document.getElementById('armor-gauntlets').click()">Gauntlets</button>
+              <button onclick="document.getElementById('armor-greaves').click()">Greaves</button>
+              <button onclick="document.getElementById('armor-boots').click()">Boots</button>
+            </div>
+          </div>
+
+          <div class="menu-section">
+            <div class="panel-title">Weapons</div>
+            <div class="btn-grid-2">
+              <button onclick="document.getElementById('weapon-sword').click()">Sword</button>
+              <button onclick="document.getElementById('weapon-axe').click()">Axe</button>
+              <button onclick="document.getElementById('weapon-mace').click()">Mace</button>
+              <button onclick="document.getElementById('weapon-bow').click()">Bow</button>
+              <button onclick="document.getElementById('weapon-shield').click()">Shield</button>
+              <button onclick="document.getElementById('weapon-none').click()">Unequip</button>
+            </div>
+          </div>
+
+          <div class="menu-section">
+            <div class="panel-title">Actions &amp; Status</div>
+            <div class="btn-row" style="margin-bottom: 10px">
+              <button onclick="document.getElementById('btn-spawn').click()">Spawn Enemy</button>
+              <button onclick="document.getElementById('btn-heal').click()">Rest (+30)</button>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">Enemies Slain</span>
+              <span id="kill-count-mobile">0</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">Active Enemies</span>
+              <span id="enemy-count-mobile">0</span>
+            </div>
+          </div>
+        </div>
+
+        <div id="touch-controls">
+          <div id="joystick-zone">
+            <div id="joystick-knob"></div>
+          </div>
+          <div id="touch-actions">
+            <button id="touch-run">Run</button>
+            <button id="touch-attack">Attack</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
